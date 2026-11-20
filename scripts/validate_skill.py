@@ -46,10 +46,18 @@ def parse_frontmatter(text: str) -> dict[str, str] | None:
         return None
 
     fields: dict[str, str] = {}
+    key = None
     for line in body:
-        if ":" in line:
+        if line[:1] in (" ", "\t"):
+            # Indented line: continuation of the previous top-level key
+            # (block scalar such as `description: >-`, or a nested mapping).
+            if key is not None and line.strip():
+                fields[key] = f"{fields[key]} {line.strip()}".strip()
+        elif ":" in line:
             key, _, value = line.partition(":")
-            fields[key.strip()] = value.strip()
+            key, value = key.strip(), value.strip()
+            # A block-scalar indicator (|, >, |-, >+ ...) is not the value.
+            fields[key] = "" if value[:1] in ("|", ">") else value
     return fields
 
 
